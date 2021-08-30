@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"feeder-service/internal/sku/application/command/create_sku"
-	"feeder-service/internal/sku/ui/socket/tcp/sku_reader"
+	"feeder-service/internal/sku/infrastructure/io/socket/tcp/sku_reader"
 	"log"
 	"os"
 	"os/signal"
@@ -13,7 +13,7 @@ import (
 )
 
 type Server struct {
-	skuReader sku_reader.SkuReader
+	skuReader               sku_reader.SkuReader
 	createSkuCommandHandler create_sku.CommandHandlerInterface
 	logger *log.Logger
 }
@@ -24,6 +24,10 @@ func New(skuReader sku_reader.SkuReader, createSkuCommandHandler create_sku.Comm
 
 func (s *Server) Run(ctx context.Context, maxConnections int) {
 	liveCondition := true
+	if maxConnections <= 0 {
+		liveCondition = false
+	}
+
 	sigChannel := make(chan os.Signal)
 	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -38,15 +42,10 @@ func (s *Server) Run(ctx context.Context, maxConnections int) {
 	createdSkus := 0
 	duplicatedSkus := 0
 	invalidSkus := 0
-	connectionSlots := NewConnectionSlots(maxConnections)
-
-	if !connectionSlots.HasFreeSlot() {
-		liveCondition = false
-	}
+	connectionSlots := NewConnectionSlotStatus(maxConnections)
 
 	for liveCondition {
-		if connectionSlots.HasFreeSlot() {
-			connectionSlots.UseFreeSlot()
+		if connectionSlots.UseFreeSlot() {
 			go func() {
 				message, _ := s.skuReader.Read()
 				if message == "terminate" {
@@ -57,11 +56,15 @@ func (s *Server) Run(ctx context.Context, maxConnections int) {
 				if err != nil {
 					if errors.Is(err, create_sku.ErrSkuAlreadyExists) {
 						duplicatedSkus++
+						connectionSlots.FreesASlot()
 						return
 					}
 					invalidSkus++
+					connectionSlots.FreesASlot()
+					return
 				}
 				createdSkus++
+				connectionSlots.FreesASlot()
 			}()
 		}
 	}

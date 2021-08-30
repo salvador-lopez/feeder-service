@@ -3,7 +3,7 @@
 package sku_reader_test
 
 import (
-	"feeder-service/internal/sku/ui/socket/tcp/sku_reader"
+	"feeder-service/internal/sku/infrastructure/io/socket/tcp/sku_reader"
 	"github.com/stretchr/testify/suite"
 	"net"
 	"testing"

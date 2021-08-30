@@ -6,15 +6,17 @@ import (
 	"context"
 	"feeder-service/internal/sku/application/command/create_sku"
 	applicationMock "feeder-service/internal/sku/application/command/create_sku/mock"
-	"feeder-service/internal/sku/ui/socket/tcp/server"
-	"feeder-service/internal/sku/ui/socket/tcp/sku_reader/mock"
+	"feeder-service/internal/sku/infrastructure/io/socket/tcp/server"
+	"feeder-service/internal/sku/infrastructure/io/socket/tcp/sku_reader/mock"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 	"log"
-	"os"
 	"strings"
+	"sync"
 	"testing"
 )
+
+const sku = "KASL-3423"
 
 type UnitSuite struct {
 	suite.Suite
@@ -46,11 +48,15 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpected() {
-	s.skuReaderMock.EXPECT().Read().Times(4).Return("patata", nil)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: "patata"}).Times(4).Return(nil)
-	s.skuReaderMock.EXPECT().Read().Times(1).Return("terminate", nil)
-	s.server.Run(s.ctx, 5)
-	s.Require().Equal("Received 4 unique product skus, 0 duplicates, 0 discard values\n", s.loggerBuffer.String())
+	s.skuReaderMock.EXPECT().Read().Times(4).Return(sku, nil)
+	s.skuReaderMock.EXPECT().Read().AnyTimes().Return("terminate", nil)
+
+	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(nil).Times(2)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(create_sku.ErrSkuAlreadyExists).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(create_sku.ErrCreatingSku).Times(1)
+
+	s.server.Run(s.ctx, 1)
+	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 1 discard values\n", s.loggerBuffer.String())
 }
 
 func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
@@ -59,13 +65,32 @@ func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
 	s.server.Run(s.ctx, 0)
 }
 
-func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDone() {
-	s.skuReaderMock.EXPECT().Read().Return("patata", nil).AnyTimes()
+func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToCancel() {
+	s.skuReaderMock.EXPECT().Read().AnyTimes().Return("terminate", nil)
+	ctx, cancelFunc := context.WithCancel(s.ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		s.server.Run(ctx, 5)
+		wg.Done()
+	}()
+	wg.Wait()
+	cancelFunc()
+	s.Require().NotEmpty(s.loggerBuffer.String())
+}
+
+func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToTimeout() {
+	s.skuReaderMock.EXPECT().Read().AnyTimes().Return(sku, nil)
 	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any()).AnyTimes().Return(nil)
-	go s.server.Run(s.ctx, 5)
-	proc, err := os.FindProcess(os.Getpid())
-	s.Require().NoError(err)
-	err = proc.Signal(os.Interrupt)
-	s.Require().NoError(err)
-	s.Require().Contains(s.loggerBuffer.String(), "Received")
+	ctx, cancelFunc := context.WithTimeout(s.ctx, 0)
+	defer cancelFunc()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		s.server.Run(ctx, 5)
+		wg.Done()
+	}()
+	wg.Wait()
+
+	s.Require().NotEmpty(s.loggerBuffer.String())
 }
