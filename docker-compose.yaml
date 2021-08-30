@@ -1,0 +1,19 @@
+version: '3.7'
+
+services:
+  mongo:
+    image: mongo:5.0
+    container_name: feeder_service_mongo
+    restart: always
+    volumes:
+      - volume_geofence_mongo:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      default:
+
+volumes:
+  volume_geofence_mongo:
+
+networks:
+  default:

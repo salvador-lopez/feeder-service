@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"feeder-service/internal/sku/application/command/create_sku"
-	"feeder-service/internal/sku/infrastructure/persistence/mongo"
 	"feeder-service/internal/sku/infrastructure/io/socket/tcp/server"
 	"feeder-service/internal/sku/infrastructure/io/socket/tcp/sku_reader"
+	"feeder-service/internal/sku/infrastructure/persistence/mongo"
 	"fmt"
 	"log"
 	"os"
