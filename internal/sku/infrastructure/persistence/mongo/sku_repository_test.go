@@ -4,6 +4,7 @@ package mongo_test
 
 import (
 	"context"
+	"errors"
 	"feeder-service/internal/sku/domain"
 	mongo2 "feeder-service/internal/sku/infrastructure/persistence/mongo"
 	"github.com/stretchr/testify/suite"
@@ -23,27 +24,45 @@ type IntegrationSuite struct {
 
 func (s *IntegrationSuite) SetupSuite() {
 	s.ctx = context.Background()
+}
 
+func (s *IntegrationSuite) initMongoDatabase() {
 	mongoClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 	s.Require().NoError(err)
 	err = mongoClient.Connect(s.ctx)
 	s.Require().NoError(err)
 
 	s.db = mongoClient.Database("sku_integration_test")
+}
+
+func (s *IntegrationSuite) initSkuRepository() error {
+	var err error
 	s.repository, err = mongo2.NewSkuRepository(s.db, domain.NewHydrator())
-	s.Require().NoError(err)
+	return err
 }
 
 func (s *IntegrationSuite) TearDownSuite() {
-	err := s.db.Drop(s.ctx)
-	s.Require().NoError(err)
+	if s.db != nil {
+		err := s.db.Drop(s.ctx)
+		s.Require().NoError(err)
+	}
 }
 
 func TestIntegration(t *testing.T) {
 	suite.Run(t, new(IntegrationSuite))
 }
 
+func (s *IntegrationSuite) TestReturnErrMongoDbNil() {
+	err := s.initSkuRepository()
+	s.Require().Error(err)
+	s.Require().True(errors.Is(err, mongo2.ErrMongoDBNil))
+}
+
 func (s *IntegrationSuite) TestSaveAndFind() {
+	s.initMongoDatabase()
+	err := s.initSkuRepository()
+	s.Require().NoError(err)
+
 	skuId, err := domain.NewSkuId(skuValue)
 	s.Require().NoError(err)
 	sku := domain.NewSku(skuId)

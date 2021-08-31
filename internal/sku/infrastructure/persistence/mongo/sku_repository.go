@@ -15,10 +15,10 @@ type SkuRepository struct {
 	hydrator   *domain.Hydrator
 }
 
-var errMongoDBNil = fmt.Errorf("mongoDB is not defined")
+var ErrMongoDBNil = fmt.Errorf("mongoDB is not defined")
 func NewSkuRepository(db *mongo.Database, hydrator *domain.Hydrator) (*SkuRepository, error) {
 	if db == (nil) {
-		return nil, errMongoDBNil
+		return nil, ErrMongoDBNil
 	}
 	return &SkuRepository{collection: db.Collection(collectionName), hydrator: hydrator}, nil
 }
