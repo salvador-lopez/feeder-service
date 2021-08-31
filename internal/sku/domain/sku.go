@@ -1,9 +1,11 @@
 package domain
 
+import "context"
+
 //go:generate mockgen -destination=mock/sku_repository_mockgen_mock.go -package=mock . SkuRepository
 type SkuRepository interface {
-	Find(id *SkuId) (*Sku, error)
-	Save(*Sku) error
+	Find(context.Context, *SkuId) (*Sku, error)
+	Save(context.Context, *Sku) error
 }
 
 type Sku struct {

@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	domain "feeder-service/internal/sku/domain"
 	reflect "reflect"
 
@@ -35,30 +36,30 @@ func (m *MockSkuRepository) EXPECT() *MockSkuRepositoryMockRecorder {
 }
 
 // Find mocks base method.
-func (m *MockSkuRepository) Find(arg0 *domain.SkuId) (*domain.Sku, error) {
+func (m *MockSkuRepository) Find(arg0 context.Context, arg1 *domain.SkuId) (*domain.Sku, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Find", arg0)
+	ret := m.ctrl.Call(m, "Find", arg0, arg1)
 	ret0, _ := ret[0].(*domain.Sku)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Find indicates an expected call of Find.
-func (mr *MockSkuRepositoryMockRecorder) Find(arg0 interface{}) *gomock.Call {
+func (mr *MockSkuRepositoryMockRecorder) Find(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockSkuRepository)(nil).Find), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockSkuRepository)(nil).Find), arg0, arg1)
 }
 
 // Save mocks base method.
-func (m *MockSkuRepository) Save(arg0 *domain.Sku) error {
+func (m *MockSkuRepository) Save(arg0 context.Context, arg1 *domain.Sku) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0)
+	ret := m.ctrl.Call(m, "Save", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockSkuRepositoryMockRecorder) Save(arg0 interface{}) *gomock.Call {
+func (mr *MockSkuRepositoryMockRecorder) Save(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSkuRepository)(nil).Save), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSkuRepository)(nil).Save), arg0, arg1)
 }

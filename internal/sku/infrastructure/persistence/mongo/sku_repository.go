@@ -8,13 +8,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const collectionName = "sku"
+
 type SkuRepository struct {
 	collection *mongo.Collection
 	hydrator   *domain.Hydrator
 }
 
 var errMongoDBNil = fmt.Errorf("mongoDB is not defined")
-func NewSkuRepository(db *mongo.Database, collectionName string, hydrator *domain.Hydrator) (*SkuRepository, error) {
+func NewSkuRepository(db *mongo.Database, hydrator *domain.Hydrator) (*SkuRepository, error) {
 	if db == (nil) {
 		return nil, errMongoDBNil
 	}

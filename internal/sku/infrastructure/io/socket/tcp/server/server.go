@@ -52,7 +52,7 @@ func (s *Server) Run(ctx context.Context, maxConnections int) {
 					liveCondition = false
 					return
 				}
-				err := s.createSkuCommandHandler.Handle(create_sku.Command{Sku: message})
+				err := s.createSkuCommandHandler.Handle(ctx, create_sku.Command{Sku: message})
 				if err != nil {
 					if errors.Is(err, create_sku.ErrSkuAlreadyExists) {
 						duplicatedSkus++

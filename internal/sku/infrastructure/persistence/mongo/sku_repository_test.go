@@ -30,7 +30,7 @@ func (s *IntegrationSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	s.db = mongoClient.Database("sku_integration_test")
-	s.repository, err = mongo2.NewSkuRepository(s.db, "sku", domain.NewHydrator())
+	s.repository, err = mongo2.NewSkuRepository(s.db, domain.NewHydrator())
 	s.Require().NoError(err)
 }
 

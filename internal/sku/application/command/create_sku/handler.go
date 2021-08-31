@@ -1,6 +1,7 @@
 package create_sku
 
 import (
+	"context"
 	"errors"
 	"feeder-service/internal/sku/domain"
 	"fmt"
@@ -12,7 +13,7 @@ type Command struct {
 
 //go:generate mockgen -destination=mock/command_handler_interface_mockgen_mock.go -package=mock . CommandHandlerInterface
 type CommandHandlerInterface interface {
-	Handle(command Command) error
+	Handle(context.Context, Command) error
 }
 
 type CommandHandler  struct {
@@ -26,13 +27,13 @@ func NewCommandHandler(repository domain.SkuRepository) *CommandHandler {
 var ErrSkuAlreadyExists = errors.New("sku already exists")
 var ErrCreatingSku = errors.New("error creating sku")
 
-func (h *CommandHandler) Handle(command Command) error {
+func (h *CommandHandler) Handle(ctx context.Context, command Command) error {
 	skuId, err := domain.NewSkuId(command.Sku)
 	if err != nil {
 		return err
 	}
 	//h.transactionalSession.BeginTransaction()
-	skuEntity, err := h.repository.Find(skuId)
+	skuEntity, err := h.repository.Find(ctx, skuId)
 	if err != nil {
 		return h.buildErrCreatingSku(skuId, err.Error())
 	}
@@ -40,7 +41,7 @@ func (h *CommandHandler) Handle(command Command) error {
 		return fmt.Errorf("%w: %s", ErrSkuAlreadyExists, skuId.Value())
 	}
 
-	err = h.repository.Save(domain.NewSku(skuId))
+	err = h.repository.Save(ctx, domain.NewSku(skuId))
 	if err != nil {
 		//h.transactionalSession.Rollback()
 		return h.buildErrCreatingSku(skuId, err.Error())

@@ -51,9 +51,9 @@ func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpecte
 	s.skuReaderMock.EXPECT().Read().Times(4).Return(sku, nil)
 	s.skuReaderMock.EXPECT().Read().AnyTimes().Return("terminate", nil)
 
-	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(nil).Times(2)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(create_sku.ErrSkuAlreadyExists).Times(1)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(create_sku.Command{Sku: sku}).Return(create_sku.ErrCreatingSku).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(nil).Times(2)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(create_sku.ErrSkuAlreadyExists).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(create_sku.ErrCreatingSku).Times(1)
 
 	s.server.Run(s.ctx, 1)
 	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 1 discard values\n", s.loggerBuffer.String())
@@ -61,7 +61,7 @@ func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpecte
 
 func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
 	s.skuReaderMock.EXPECT().Read().Times(0)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any()).Times(0)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, gomock.Any()).Times(0)
 	s.server.Run(s.ctx, 0)
 }
 
@@ -81,7 +81,7 @@ func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToC
 
 func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToTimeout() {
 	s.skuReaderMock.EXPECT().Read().AnyTimes().Return(sku, nil)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any()).AnyTimes().Return(nil)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 	ctx, cancelFunc := context.WithTimeout(s.ctx, 0)
 	defer cancelFunc()
 	var wg sync.WaitGroup

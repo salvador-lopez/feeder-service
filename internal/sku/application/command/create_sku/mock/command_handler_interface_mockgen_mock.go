@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	create_sku "feeder-service/internal/sku/application/command/create_sku"
 	reflect "reflect"
 
@@ -35,15 +36,15 @@ func (m *MockCommandHandlerInterface) EXPECT() *MockCommandHandlerInterfaceMockR
 }
 
 // Handle mocks base method.
-func (m *MockCommandHandlerInterface) Handle(arg0 create_sku.Command) error {
+func (m *MockCommandHandlerInterface) Handle(arg0 context.Context, arg1 create_sku.Command) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Handle", arg0)
+	ret := m.ctrl.Call(m, "Handle", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Handle indicates an expected call of Handle.
-func (mr *MockCommandHandlerInterfaceMockRecorder) Handle(arg0 interface{}) *gomock.Call {
+func (mr *MockCommandHandlerInterfaceMockRecorder) Handle(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockCommandHandlerInterface)(nil).Handle), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handle", reflect.TypeOf((*MockCommandHandlerInterface)(nil).Handle), arg0, arg1)
 }
