@@ -18,7 +18,7 @@ import (
 type Server struct {
 	skuReader               sku_reader.SkuReader
 	createSkuCommandHandler create_sku.CommandHandlerInterface
-	logger *log.Logger
+	logger                  *log.Logger
 }
 
 func New(skuReader sku_reader.SkuReader, createSkuCommandHandler create_sku.CommandHandlerInterface, logger *log.Logger) *Server {

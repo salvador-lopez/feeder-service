@@ -69,7 +69,7 @@ func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpecte
 func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
 	s.skuReaderMock.EXPECT().Read(s.deadline).Times(0)
 	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, gomock.Any()).Times(0)
-	s.server.Run(s.ctx, maxConnections, s.deadline)
+	s.server.Run(s.ctx, 0, s.deadline)
 }
 
 func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToCancel() {
