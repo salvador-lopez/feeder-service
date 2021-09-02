@@ -4,7 +4,7 @@
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags=acceptance" />
     <envs>
-      <env name="SOCKET_ADDR" value="localhost:5000" />
+      <env name="SOCKET_ADDR" value="localhost:4000" />
       <env name="MONGO_URI" value="mongodb://localhost:27017" />
       <env name="MONGO_DATABASE" value="sku_test" />
       <env name="TIMEOUT_IN_SECS" value="2" />

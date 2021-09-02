@@ -50,8 +50,9 @@ func main() {
 		log.Fatalf("error bootstraping application: %v", err)
 	}
 	fmt.Println("Starting listening tcp connections in "+cfg.socketAddr)
-	serverTCP.Run(ctx, cfg.maxConcurrentConnections, time.Now().Add(cfg.timeout))
-	fmt.Println("Server finished successfully")
+	report := serverTCP.Run(ctx, cfg.maxConcurrentConnections, time.Now().Add(cfg.timeout))
+
+	fmt.Println("Received "+strconv.Itoa(report.CreatedSkus)+" unique product skus, "+strconv.Itoa(report.DuplicatedSkus)+" duplicates, "+strconv.Itoa(report.InvalidSkus)+" discard values")
 }
 
 func fetchConfigFromEnvVars() (*config, error) {

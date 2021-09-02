@@ -41,9 +41,14 @@ func (s *ApplicationSuite) TestServeToFiveConcurrentClients() {
 		wg.Done()
 	}()
 
-	s.sendMessageFromAClient("KASL-3423")
+	const (
+		aUniqueSku       = "KASL-3423"
+		anotherUniqueSku = "SLOS-4332"
+	)
+
+	s.sendMessageFromAClient(aUniqueSku)
 	s.sendMessageFromAClient("LPOS-32411)")
-	s.sendMessageFromAClient("SLOS-4332")
+	s.sendMessageFromAClient(anotherUniqueSku)
 	s.sendMessageFromAClient("invalid-sku")
 	s.sendMessageFromAClient("KASL-3423")
 	s.sendMessageFromAClient("terminate")
@@ -51,7 +56,8 @@ func (s *ApplicationSuite) TestServeToFiveConcurrentClients() {
 
 	fileData, err := os.ReadFile(s.cfg.logFileName)
 	s.Require().NoError(err)
-	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 2 discard values\n", string(fileData))
+	s.Require().Contains(string(fileData), aUniqueSku)
+	s.Require().Contains(string(fileData), anotherUniqueSku)
 }
 
 func (s *ApplicationSuite) sendMessageFromAClient(messageToSend string) {

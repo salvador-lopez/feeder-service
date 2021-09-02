@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	sku = "KASL-3423"
+	sku            = "KASL-3423"
+	anotherSku     = "SLOS-4332"
 	maxConnections = 5
 )
 
@@ -54,50 +55,68 @@ func TestSuite(t *testing.T) {
 	suite.Run(t, new(UnitSuite))
 }
 
-func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpected() {
-	s.skuReaderMock.EXPECT().Read(s.deadline).Times(4).Return(sku, nil)
+func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndCreatedSkusAreLoggedAndReportIsReturned() {
+	s.skuReaderMock.EXPECT().Read(s.deadline).Times(1).Return(sku, nil)
+	s.skuReaderMock.EXPECT().Read(s.deadline).Times(3).Return(anotherSku, nil)
 	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return("terminate", nil)
 
-	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(nil).Times(2)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(domain.ErrSkuAlreadyExists).Times(1)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(create_sku.ErrCreatingSku).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(nil).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: anotherSku}).Return(nil).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: anotherSku}).Return(domain.ErrSkuAlreadyExists).Times(2)
 
-	s.server.Run(s.ctx, maxConnections, s.deadline)
-	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 1 discard values\n", s.loggerBuffer.String())
+	report := s.server.Run(s.ctx, maxConnections, s.deadline)
+	s.Require().Equal(2, report.CreatedSkus)
+	s.Require().Equal(2, report.DuplicatedSkus)
+	s.Require().Equal(0, report.InvalidSkus)
+	s.Require().Contains(s.loggerBuffer.String(), sku)
+	s.Require().Contains(s.loggerBuffer.String(), anotherSku)
 }
 
-func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
+func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZeroAndEmptyReportIsReturned() {
 	s.skuReaderMock.EXPECT().Read(s.deadline).Times(0)
 	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, gomock.Any()).Times(0)
-	s.server.Run(s.ctx, 0, s.deadline)
+	s.requireEmptyReportAndNoSkusLogged(s.server.Run(s.ctx, 0, s.deadline))
 }
 
-func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToCancel() {
+func (s *UnitSuite) requireEmptyReportAndNoSkusLogged(report server.Report) {
+	s.Require().Equal(0, report.CreatedSkus)
+	s.Require().Equal(0, report.DuplicatedSkus)
+	s.Require().Equal(0, report.InvalidSkus)
+	s.Require().Empty(s.loggerBuffer.String())
+}
+
+func (s *UnitSuite) TestServerFinishAndAnEmptyReportIsReturnedWhenContextIsDoneDueToCancel() {
 	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return("terminate", nil)
 	ctx, cancelFunc := context.WithCancel(s.ctx)
+	var report server.Report
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		s.server.Run(ctx, maxConnections, s.deadline)
+		report = s.server.Run(ctx, maxConnections, s.deadline)
 		wg.Done()
 	}()
 	wg.Wait()
 	cancelFunc()
-	s.Require().NotEmpty(s.loggerBuffer.String())
+	s.requireEmptyReportAndNoSkusLogged(report)
 }
 
-func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToTimeout() {
+func (s *UnitSuite) TestServerFinishAndTheSkuIsLoggedWhenContextIsDoneDueToTimeout() {
 	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return(sku, nil)
-	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(gomock.Any(), gomock.Any()).AnyTimes().Return(domain.ErrSkuAlreadyExists)
 	ctx, cancelFunc := context.WithTimeout(s.ctx, 0)
 	defer cancelFunc()
+	var report server.Report
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		s.server.Run(ctx, maxConnections, s.deadline)
+		report = s.server.Run(ctx, maxConnections, s.deadline)
 		wg.Done()
 	}()
 	wg.Wait()
 
-	s.Require().NotEmpty(s.loggerBuffer.String())
+	s.Require().Equal(1, report.CreatedSkus)
+	s.Require().GreaterOrEqual(report.DuplicatedSkus, 0)
+	s.Require().Equal(0, report.InvalidSkus)
+	s.Require().Equal(sku+"\n", s.loggerBuffer.String())
 }

@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -21,11 +20,17 @@ type Server struct {
 	logger                  *log.Logger
 }
 
+type Report struct {
+	CreatedSkus int
+	DuplicatedSkus int
+	InvalidSkus int
+}
+
 func New(skuReader sku_reader.SkuReader, createSkuCommandHandler create_sku.CommandHandlerInterface, logger *log.Logger) *Server {
 	return &Server{skuReader: skuReader, createSkuCommandHandler: createSkuCommandHandler, logger: logger}
 }
 
-func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time) {
+func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time) Report {
 	liveCondition := true
 	if maxConnections <= 0 {
 		liveCondition = false
@@ -42,9 +47,7 @@ func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time
 		}
 	}()
 
-	createdSkus := 0
-	duplicatedSkus := 0
-	invalidSkus := 0
+	report := Report{}
 	connectionSlots := NewConnectionSlotStatus(maxConnections)
 	var wg sync.WaitGroup
 	for liveCondition {
@@ -65,17 +68,18 @@ func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time
 				err = s.createSkuCommandHandler.Handle(ctx, create_sku.Command{Sku: message})
 				if err != nil {
 					if errors.Is(err, domain.ErrSkuAlreadyExists) {
-						duplicatedSkus++
+						report.DuplicatedSkus++
 						connectionSlots.FreesASlot()
 						wg.Done()
 						return
 					}
-					invalidSkus++
+					report.InvalidSkus++
 					connectionSlots.FreesASlot()
 					wg.Done()
 					return
 				}
-				createdSkus++
+				report.CreatedSkus++
+				s.logger.Println(message)
 				connectionSlots.FreesASlot()
 				wg.Done()
 			}()
@@ -83,5 +87,5 @@ func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time
 	}
 	wg.Wait()
 
-	s.logger.Println("Received "+strconv.Itoa(createdSkus)+" unique product skus, "+strconv.Itoa(duplicatedSkus)+" duplicates, "+strconv.Itoa(invalidSkus)+" discard values")
+	return report
 }
