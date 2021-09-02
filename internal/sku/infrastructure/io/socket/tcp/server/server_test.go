@@ -20,6 +20,7 @@ import (
 
 const (
 	sku = "KASL-3423"
+	maxConnections = 5
 )
 
 type UnitSuite struct {
@@ -61,14 +62,14 @@ func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndReportIsLoggedAsExpecte
 	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(domain.ErrSkuAlreadyExists).Times(1)
 	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(create_sku.ErrCreatingSku).Times(1)
 
-	s.server.Run(s.ctx, 5, s.deadline)
+	s.server.Run(s.ctx, maxConnections, s.deadline)
 	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 1 discard values\n", s.loggerBuffer.String())
 }
 
 func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZero() {
 	s.skuReaderMock.EXPECT().Read(s.deadline).Times(0)
 	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, gomock.Any()).Times(0)
-	s.server.Run(s.ctx, 0, s.deadline)
+	s.server.Run(s.ctx, maxConnections, s.deadline)
 }
 
 func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToCancel() {
@@ -77,7 +78,7 @@ func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToC
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		s.server.Run(ctx, 5, s.deadline)
+		s.server.Run(ctx, maxConnections, s.deadline)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -93,7 +94,7 @@ func (s *UnitSuite) TestServerFinishAndAReportIsGeneratedWhenContextIsDoneDueToT
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		s.server.Run(ctx, 5, s.deadline)
+		s.server.Run(ctx, maxConnections, s.deadline)
 		wg.Done()
 	}()
 	wg.Wait()
