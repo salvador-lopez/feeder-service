@@ -15,21 +15,31 @@ import (
 	"time"
 )
 
+const (
+	socketAddr     = "localhost:4000"
+	logFileName    = "server_report_file.txt"
+	maxConnections = 5
+	timeout        = 60 * time.Second
+)
+
 func main() {
 	fmt.Println("Starting server")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	serverTCP, err := bootstrapApplication(ctx)
 	if err != nil {
 		log.Fatalf("error bootstraping application: %v", err)
 	}
-	serverTCP.Run(ctx, 5)
+	serverTCP.Run(ctx, maxConnections, time.Now().Add(timeout))
 }
 
 func bootstrapApplication(ctx context.Context) (*server.Server, error) {
-	skuReader := sku_reader.New("localhost:4000")
+	skuReader, err := sku_reader.New(socketAddr)
+	if err != nil {
+		return nil, err
+	}
 
 	mongoClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
@@ -45,14 +55,13 @@ func bootstrapApplication(ctx context.Context) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	createSkuCommandHandler := create_sku.NewCommandHandler(skuRepository)
 
-	logFile, err := os.OpenFile("server_report_file", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
-	defer logFile.Close()
-
 	logger := log.New(logFile, "", log.Lmsgprefix)
 
 	return server.New(skuReader, createSkuCommandHandler, logger), nil

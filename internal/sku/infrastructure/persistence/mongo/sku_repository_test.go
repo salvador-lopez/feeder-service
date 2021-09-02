@@ -26,21 +26,6 @@ func (s *IntegrationSuite) SetupSuite() {
 	s.ctx = context.Background()
 }
 
-func (s *IntegrationSuite) initMongoDatabase() {
-	mongoClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
-	s.Require().NoError(err)
-	err = mongoClient.Connect(s.ctx)
-	s.Require().NoError(err)
-
-	s.db = mongoClient.Database("sku_integration_test")
-}
-
-func (s *IntegrationSuite) initSkuRepository() error {
-	var err error
-	s.repository, err = mongo2.NewSkuRepository(s.db, domain.NewHydrator())
-	return err
-}
-
 func (s *IntegrationSuite) TearDownSuite() {
 	if s.db != nil {
 		err := s.db.Drop(s.ctx)
@@ -73,4 +58,19 @@ func (s *IntegrationSuite) TestSaveAndFind() {
 	skuFromRepository, err := s.repository.Find(s.ctx, skuId)
 	s.Require().NoError(err)
 	s.Require().True(sku.Id().Equal(skuFromRepository.Id()))
+}
+
+func (s *IntegrationSuite) initMongoDatabase() {
+	mongoClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	s.Require().NoError(err)
+	err = mongoClient.Connect(s.ctx)
+	s.Require().NoError(err)
+
+	s.db = mongoClient.Database("sku_integration_test")
+}
+
+func (s *IntegrationSuite) initSkuRepository() error {
+	var err error
+	s.repository, err = mongo2.NewSkuRepository(s.db, domain.NewHydrator())
+	return err
 }

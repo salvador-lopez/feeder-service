@@ -8,6 +8,7 @@ import (
 	"feeder-service/internal/sku/application/command/create_sku"
 	"feeder-service/internal/sku/domain"
 	"feeder-service/internal/sku/domain/mock"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -39,7 +40,6 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *UnitSuite) TestSaveSku() {
-	s.repositoryFindNotFoundExpectation()
 	s.repositorySaveNoErrorExpectation(sku)
 
 	err := s.executeCommandHandler(sku)
@@ -47,8 +47,6 @@ func (s *UnitSuite) TestSaveSku() {
 }
 
 func (s *UnitSuite) TestReturnErrCreatingSkuWhenCallToRepositorySaveReturnError() {
-	s.repositoryFindNotFoundExpectation()
-
 	repositoryError := errors.New("repository error")
 	s.repositoryMock.EXPECT().Save(s.ctx, gomock.Any()).Times(1).Return(repositoryError)
 	s.executeTestErrCreatingSku(repositoryError.Error())
@@ -58,16 +56,9 @@ func (s *UnitSuite) TestReturnErrCreatingSkuWhenAlreadyExists() {
 	skuId, err := domain.NewSkuId(sku)
 	s.Require().NoError(err)
 	alreadyExistingSku := domain.NewSku(skuId)
-	s.repositoryMock.EXPECT().Find(s.ctx, skuId).Times(1).Return(alreadyExistingSku, nil)
+	s.repositoryMock.EXPECT().Save(s.ctx, alreadyExistingSku).Times(1).Return(fmt.Errorf("%w: %s", domain.ErrSkuAlreadyExists, sku))
 
 	s.executeTestErrSkuAlreadyExists()
-}
-
-func (s *UnitSuite) TestReturnErrCreatingSkuWhenRepositoryFindReturnError() {
-	repositoryError := errors.New("repository error")
-	s.repositoryMock.EXPECT().Find(s.ctx, gomock.Any()).Return(nil, repositoryError)
-
-	s.executeTestErrCreatingSku(repositoryError.Error())
 }
 
 func (s *UnitSuite) TestReturnErrInvalidSkuWhenHasLessThanNineCharacters() {
@@ -88,10 +79,6 @@ func (s *UnitSuite) TestReturnErrInvalidSkuWhenTheFirstFourCharactersAreNotLette
 
 func (s *UnitSuite) TestReturnErrInvalidSkuWhenTheLastFourCharactersAreNotNumbers() {
 	s.executeTestInvalidSku("ABCD-ABCD")
-}
-
-func (s *UnitSuite) repositoryFindNotFoundExpectation() {
-	s.repositoryMock.EXPECT().Find(s.ctx, gomock.Any()).Return(nil, nil)
 }
 
 func (s *UnitSuite) repositorySaveNoErrorExpectation(sku string) {
@@ -126,6 +113,6 @@ func (s *UnitSuite) executeTestErrCreatingSku(errorMsg string) {
 func (s *UnitSuite) executeTestErrSkuAlreadyExists() {
 	err := s.executeCommandHandler(sku)
 	s.Require().Error(err)
-	s.Require().True(errors.Is(err, create_sku.ErrSkuAlreadyExists))
+	s.Require().True(errors.Is(err, domain.ErrSkuAlreadyExists))
 	s.Require().Equal("sku already exists: "+sku, err.Error())
 }

@@ -24,7 +24,6 @@ func NewCommandHandler(repository domain.SkuRepository) *CommandHandler {
 	return &CommandHandler{repository: repository}
 }
 
-var ErrSkuAlreadyExists = errors.New("sku already exists")
 var ErrCreatingSku = errors.New("error creating sku")
 
 func (h *CommandHandler) Handle(ctx context.Context, command Command) error {
@@ -32,21 +31,15 @@ func (h *CommandHandler) Handle(ctx context.Context, command Command) error {
 	if err != nil {
 		return err
 	}
-	//h.transactionalSession.BeginTransaction()
-	skuEntity, err := h.repository.Find(ctx, skuId)
-	if err != nil {
-		return h.buildErrCreatingSku(skuId, err.Error())
-	}
-	if skuEntity != nil {
-		return fmt.Errorf("%w: %s", ErrSkuAlreadyExists, skuId.Value())
-	}
 
 	err = h.repository.Save(ctx, domain.NewSku(skuId))
 	if err != nil {
-		//h.transactionalSession.Rollback()
+		if errors.Is(err, domain.ErrSkuAlreadyExists) {
+			return err
+		}
 		return h.buildErrCreatingSku(skuId, err.Error())
 	}
-	//h.transactionalSession.Commit()
+
 	return nil
 }
 

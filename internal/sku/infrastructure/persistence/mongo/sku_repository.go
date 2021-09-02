@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"feeder-service/internal/sku/domain"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -30,6 +31,9 @@ func (r *SkuRepository) Find(ctx context.Context, id *domain.SkuId) (*domain.Sku
 
 	result := r.collection.FindOne(ctx, bson.M{"_id": id.Value()})
 	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, result.Err()
 	}
 
@@ -46,6 +50,9 @@ func (r *SkuRepository) Save(ctx context.Context, sku *domain.Sku) error {
 	skuDTO := r.hydrator.Dehydrate(sku)
 	_, err := r.collection.InsertOne(ctx, skuDTO)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return fmt.Errorf("%w: %s", domain.ErrSkuAlreadyExists, err.Error())
+		}
 		return fmt.Errorf("%w: %s", ErrSave, err.Error())
 	}
 

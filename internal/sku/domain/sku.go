@@ -1,6 +1,11 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+var ErrSkuAlreadyExists = errors.New("sku already exists")
 
 //go:generate mockgen -destination=mock/sku_repository_mockgen_mock.go -package=mock . SkuRepository
 type SkuRepository interface {

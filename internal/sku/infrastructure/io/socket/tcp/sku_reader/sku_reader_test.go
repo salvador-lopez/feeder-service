@@ -7,17 +7,21 @@ import (
 	"github.com/stretchr/testify/suite"
 	"net"
 	"testing"
+	"time"
 )
 
-const addr = "localhost:4000"
+const (
+	addr    = "localhost:4000"
+)
 
 type IntegrationSuite struct {
 	suite.Suite
+	deadline  time.Time
 	skuReader *sku_reader.SkuReaderImpl
 }
 
 func (s *IntegrationSuite) SetupTest() {
-
+	s.deadline = time.Now().Add(10 * time.Second)
 }
 
 func (s *IntegrationSuite) TearDownTest() {
@@ -28,12 +32,14 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *IntegrationSuite) TestRead() {
-	s.skuReader = sku_reader.New(addr)
+	skuReader, err := sku_reader.New(addr)
+	s.Require().NoError(err)
+	s.skuReader = skuReader
 
 	expectedMessage := "hello"
 
 	go func() {
-		message, err := s.skuReader.Read()
+		message, err := s.skuReader.Read(s.deadline)
 		s.Require().NoError(err)
 		s.Require().Equal(expectedMessage, message)
 	}()
@@ -47,15 +53,17 @@ func (s *IntegrationSuite) TestRead() {
 }
 
 func (s *IntegrationSuite) TestErrorReadWhenAddrDoesNotMatch() {
-	s.skuReader = sku_reader.New("localhost:5000")
+	skuReader, err := sku_reader.New("localhost:5000")
+	s.Require().NoError(err)
+	s.skuReader = skuReader
 	expectedMessage := "hello"
 
 	go func() {
-		message, err := s.skuReader.Read()
+		message, err := s.skuReader.Read(s.deadline)
 		s.Require().Error(err)
 		s.Require().Equal(expectedMessage, message)
 	}()
 
-	_, err := net.Dial("tcp", addr)
+	_, err = net.Dial("tcp", addr)
 	s.Require().Error(err)
 }

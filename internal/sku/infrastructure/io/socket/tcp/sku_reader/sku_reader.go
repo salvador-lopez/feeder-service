@@ -2,25 +2,29 @@ package sku_reader
 
 import (
 	"bufio"
+	"errors"
 	"net"
+	"time"
 )
 //go:generate mockgen -destination=mock/sku_reader_mockgen_mock.go -package=mock . SkuReader
 type SkuReader interface {
-	Read()(string, error)
+	Read(deadline time.Time)(string, error)
 }
 
 type SkuReaderImpl struct {
-	addr string
+	listener net.Listener
 }
 
-func New(addr string) *SkuReaderImpl {
-	return &SkuReaderImpl{addr: addr}
+func New(addr string) (*SkuReaderImpl, error){
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return &SkuReaderImpl{listener: listener}, nil
 }
 
-
-
-func (h *SkuReaderImpl) Read()(string, error) {
-	conn, err := h.connect()
+func (h *SkuReaderImpl) Read(deadline time.Time)(string, error) {
+	conn, err := h.connect(deadline)
 	if err != nil {
 		return "", err
 	}
@@ -30,15 +34,27 @@ func (h *SkuReaderImpl) Read()(string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	return string(line), nil
 }
 
-func (h *SkuReaderImpl) connect() (net.Conn, error) {
-	listener, _ := net.Listen("tcp", h.addr)
-	c, err := listener.Accept()
-	if err != nil {
-		return nil, err
+func (h *SkuReaderImpl) connect(deadline time.Time) (net.Conn, error) {
+	c := make(chan net.Conn)
+	e := make(chan error)
+	go func() {
+		conn, err := h.listener.Accept()
+		if err != nil {
+			e <- err
+		} else {
+			c <- conn
+		}
+	}()
+
+	select {
+	case conn := <-c:
+		return conn, nil
+		case err := <- e:
+			return nil, err
+	case <-time.After(deadline.Sub(time.Now())):
+		return nil, errors.New("deadline exceeded")
 	}
-	return c, nil
 }
