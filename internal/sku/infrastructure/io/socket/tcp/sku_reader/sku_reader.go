@@ -52,8 +52,8 @@ func (h *SkuReaderImpl) connect(deadline time.Time) (net.Conn, error) {
 	select {
 	case conn := <-c:
 		return conn, nil
-		case err := <- e:
-			return nil, err
+	case err := <- e:
+		return nil, err
 	case <-time.After(deadline.Sub(time.Now())):
 		return nil, errors.New("deadline exceeded")
 	}

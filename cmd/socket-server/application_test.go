@@ -15,6 +15,13 @@ import (
 
 type ApplicationSuite struct {
 	suite.Suite
+	cfg *config
+}
+
+func (s *ApplicationSuite) SetupSuite() {
+	cfg, err := fetchConfigFromEnvVars()
+	s.Require().NoError(err)
+	s.cfg = cfg
 }
 
 func (s *ApplicationSuite) TearDownSuite() {
@@ -42,13 +49,13 @@ func (s *ApplicationSuite) TestServeToFiveConcurrentClients() {
 	s.sendMessageFromAClient("terminate")
 	wg.Wait()
 
-	fileData, err := os.ReadFile(logFileName)
+	fileData, err := os.ReadFile(s.cfg.logFileName)
 	s.Require().NoError(err)
 	s.Require().Equal("Received 2 unique product skus, 1 duplicates, 2 discard values\n", string(fileData))
 }
 
 func (s *ApplicationSuite) sendMessageFromAClient(messageToSend string) {
-	conn, err := net.Dial("tcp", socketAddr)
+	conn, err := net.Dial("tcp", s.cfg.socketAddr)
 	s.Require().NoError(err)
 	defer conn.Close()
 
@@ -57,18 +64,18 @@ func (s *ApplicationSuite) sendMessageFromAClient(messageToSend string) {
 }
 
 func (s *ApplicationSuite) removeLogFile() {
-	err := os.Remove(logFileName)
+	err := os.Remove(s.cfg.logFileName)
 	s.Require().NoError(err)
 }
 
 func (s *ApplicationSuite) dropMongoDatabase() {
-	mongoClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(s.cfg.mongoUri))
 	s.Require().NoError(err)
 	ctx := context.Background()
 	err = mongoClient.Connect(ctx)
 	s.Require().NoError(err)
 
-	db := mongoClient.Database("sku")
+	db := mongoClient.Database(s.cfg.mongoDatabase)
 	err = db.Drop(ctx)
 	s.Require().NoError(err)
 }

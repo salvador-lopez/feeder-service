@@ -1,0 +1,21 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Application Test" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="feeder-service" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags=acceptance" />
+    <envs>
+      <env name="SOCKET_ADDR" value="localhost:5000" />
+      <env name="MONGO_URI" value="mongodb://localhost:27017" />
+      <env name="MONGO_DATABASE" value="sku_test" />
+      <env name="TIMEOUT_IN_SECS" value="5" />
+      <env name="LOG_FILE_NAME" value="server_report_file_test.txt" />
+      <env name="MAX_CONCURRENT_CONNECTIONS" value="5" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="feeder-service/cmd/socket-server" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <framework value="gotest" />
+    <method v="2" />
+  </configuration>
+</component>
