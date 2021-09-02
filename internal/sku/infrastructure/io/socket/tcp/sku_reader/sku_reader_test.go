@@ -36,7 +36,7 @@ func (s *IntegrationSuite) TestRead() {
 	s.Require().NoError(err)
 	s.skuReader = skuReader
 
-	expectedMessage := "hello"
+	expectedMessage := "KASL-3423"
 
 	go func() {
 		message, err := s.skuReader.Read(s.deadline)
@@ -48,7 +48,7 @@ func (s *IntegrationSuite) TestRead() {
 	s.Require().NoError(err)
 	defer conn.Close()
 
-	_, err = conn.Write([]byte(expectedMessage))
+	_, err = conn.Write([]byte("000"+expectedMessage))
 	s.Require().NoError(err)
 }
 

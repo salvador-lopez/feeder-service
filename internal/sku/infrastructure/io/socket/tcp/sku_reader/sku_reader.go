@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"net"
+	"strings"
 	"time"
 )
 //go:generate mockgen -destination=mock/sku_reader_mockgen_mock.go -package=mock . SkuReader
@@ -34,7 +35,8 @@ func (h *SkuReaderImpl) Read(deadline time.Time)(string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(line), nil
+
+	return strings.TrimLeft(string(line), "0"), nil
 }
 
 func (h *SkuReaderImpl) connect(deadline time.Time) (net.Conn, error) {
