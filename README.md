@@ -1,6 +1,6 @@
-#Feeder service
+# Feeder service
 
-##Requirements
+## Requirements
 
 In order to execute this application in your machine you'll need to have the following software installed:
 
@@ -14,7 +14,7 @@ To setup the containers that holds the mongodb infrastructure we need to execute
 ```
 docker-compose up -d
 ```
-##Run the application
+## Run the application
 
 In order to execute the feeder-service app you'll find the required end vars in the cmd/socket-server/.env.{local|test} file. Copy them and execute the run command as follows from the repository root path:
 ```
@@ -27,7 +27,7 @@ go run cmd/socket-server/main.go
 ```
 The previous command will run the app with the config values defined in the cmd/socket-server/main.go:28 (config.newConfigDefault() factory method)
 
-##Execute tests:
+## Execute tests:
 ```
 SOCKET_ADDR=localhost:5000;MONGO_URI=mongodb://localhost:27017;MONGO_DATABASE=sku_test;TIMEOUT_IN_SECS=2;LOG_FILE_NAME=server_report_file_test.txt;MAX_CONCURRENT_CONNECTIONS=5 go test ./... -tags=unit,integration,acceptance
 ```
@@ -36,11 +36,11 @@ If you want to only execute one kind of tests (unit, integration or acceptance) 
 
 If you use the intellij IDEA (intellij ultimate or only goland) you can execute both tests and the socket-server application through the run configurations stored in the .run folder
 
-##Architecture overview:
+## Architecture overview:
 - This application was developed using the hexagonal architecture tactical approach of the Domain Driven Design.
 - It's also using the CQRS pattern in the application layer (the domain model is shared between Commands and Queries). The reason to have this is that with this approach is very easy to know what actions (Commands) will modify the state of your application
 
-##Folder structure:
+## Folder structure:
 - The entry point of the application lives in the cmd/socket-server folder
 
 
