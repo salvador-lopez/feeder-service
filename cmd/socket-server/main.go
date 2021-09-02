@@ -32,13 +32,11 @@ func newConfigDefault() *config {
 		mongoDatabase:            "sku",
 		logFileName:              "server_report_file.txt",
 		maxConcurrentConnections: 5,
-		timeout:                  5 * time.Second,
+		timeout:                  60 * time.Second,
 	}
 }
 
 func main() {
-	fmt.Println("Starting server")
-
 	cfg, err := fetchConfigFromEnvVars()
 	if err != nil {
 		log.Fatalf("error fetching application config from env vars: %v", err)
@@ -51,6 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error bootstraping application: %v", err)
 	}
+	fmt.Println("Starting listening tcp connections in "+cfg.socketAddr)
 	serverTCP.Run(ctx, cfg.maxConcurrentConnections, time.Now().Add(cfg.timeout))
 	fmt.Println("Server finished successfully")
 }

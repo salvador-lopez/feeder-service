@@ -12,27 +12,21 @@ In order to execute this application in your machine you'll need to have the fol
 
 To setup the containers that holds the mongodb infrastructure we need to execute in the project root folder:
 ```
-docker-compose up -d
+make init
 ```
 ## Run the application
 
-In order to execute the feeder-service app you'll find the required end vars in the cmd/socket-server/.env.{local|test} file. Copy them and execute the run command as follows from the repository root path:
+In order to execute the feeder-service app you'll find the required end vars in the Makefile, so you can modify them there if you want. The makefile command:
 ```
-SOCKET_ADDR=localhost:4000;MONGO_URI=mongodb://localhost:27017;MONGO_DATABASE=sku_test;TIMEOUT_IN_SECS=60;LOG_FILE_NAME=server_report_file.txt;MAX_CONCURRENT_CONNECTIONS=5 go run cmd/socket-server/main.go
+make server-run
 ```
-
-If you want to run the app with the default config values you can execute only as follows:
-```
-go run cmd/socket-server/main.go
-```
-The previous command will run the app with the config values defined in the cmd/socket-server/main.go:28 (config.newConfigDefault() factory method)
 
 ## Execute tests:
 ```
-SOCKET_ADDR=localhost:5000;MONGO_URI=mongodb://localhost:27017;MONGO_DATABASE=sku_test;TIMEOUT_IN_SECS=2;LOG_FILE_NAME=server_report_file_test.txt;MAX_CONCURRENT_CONNECTIONS=5 go test ./... -tags=unit,integration,acceptance
+make unit-tests
+make integration-tests
+make acceptance-tests
 ```
-
-If you want to only execute one kind of tests (unit, integration or acceptance) you can do this modifying the tags flag in the previous command
 
 If you use the intellij IDEA (intellij ultimate or only goland) you can execute both tests and the socket-server application through the run configurations stored in the .run folder
 
