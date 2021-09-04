@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"time"
@@ -113,7 +114,11 @@ func fetchTimeoutEnvVar(cfg *config) error{
 }
 
 func bootstrapApplication(ctx context.Context, cfg *config) (*server.Server, error) {
-	skuReader, err := sku_reader.New(cfg.socketAddr)
+	listener, err := net.Listen("tcp", cfg.socketAddr)
+	if err != nil {
+		return nil, err
+	}
+	skuReader, err := sku_reader.New(listener)
 	if err != nil {
 		return nil, err
 	}

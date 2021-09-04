@@ -17,14 +17,23 @@ const (
 type IntegrationSuite struct {
 	suite.Suite
 	deadline  time.Time
+	listener net.Listener
 	skuReader *sku_reader.SkuReaderImpl
 }
 
 func (s *IntegrationSuite) SetupTest() {
-	s.deadline = time.Now().Add(10 * time.Second)
+	s.deadline = time.Now().Add(1 * time.Second)
+	listener, err := net.Listen("tcp", addr)
+	s.Require().NoError(err)
+	s.listener = listener
+	skuReader, err := sku_reader.New(listener)
+	s.Require().NoError(err)
+	s.skuReader = skuReader
 }
 
 func (s *IntegrationSuite) TearDownTest() {
+	err := s.listener.Close()
+	s.Require().NoError(err)
 }
 
 func TestSuite(t *testing.T) {
@@ -32,38 +41,60 @@ func TestSuite(t *testing.T) {
 }
 
 func (s *IntegrationSuite) TestRead() {
-	skuReader, err := sku_reader.New(addr)
-	s.Require().NoError(err)
-	s.skuReader = skuReader
-
 	expectedMessage := "KASL-3423"
 
+	var readErrorChan = make(chan error)
+	var readMessageChan = make(chan string)
 	go func() {
-		message, err := s.skuReader.Read(s.deadline)
-		s.Require().NoError(err)
-		s.Require().Equal(expectedMessage, message)
+		readMessage, readError := s.skuReader.Read(s.deadline)
+		if readError != nil {
+			readErrorChan <- readError
+			return
+		}
+		readMessageChan <- readMessage
 	}()
 
+	s.sendMessageFromAClient("000"+expectedMessage)
+
+	testFinishDeadline := s.deadline.Add(1 * time.Second)
+	select {
+		case readMessage := <- readMessageChan:
+			s.Require().Equal(expectedMessage, readMessage)
+		case readError := <- readErrorChan:
+			s.FailNow(readError.Error())
+		case <-time.After(testFinishDeadline.Sub(time.Now())):
+			s.FailNow("skuReader.Read() operation does not finish on time")
+	}
+}
+
+func (s *IntegrationSuite) TestReadDeadlineExceed() {
+	var readErrorChan = make(chan error)
+	var readMessageChan = make(chan string)
+	go func() {
+		readMessage, readError := s.skuReader.Read(s.deadline)
+		if readError != nil {
+			readErrorChan <- readError
+			return
+		}
+		readMessageChan <- readMessage
+	}()
+
+	testFinishDeadline := s.deadline.Add(1 * time.Second)
+	select {
+	case <- readMessageChan:
+		s.FailNow("no message was expected")
+	case readError := <- readErrorChan:
+		s.Require().Error(readError)
+	case <-time.After(testFinishDeadline.Sub(time.Now())):
+		s.FailNow("skuReader.Read() operation does not finish on time")
+	}
+}
+
+func (s *IntegrationSuite) sendMessageFromAClient(messageToSend string) {
 	conn, err := net.Dial("tcp", addr)
 	s.Require().NoError(err)
 	defer conn.Close()
 
-	_, err = conn.Write([]byte("000"+expectedMessage))
+	_, err = conn.Write([]byte(messageToSend))
 	s.Require().NoError(err)
-}
-
-func (s *IntegrationSuite) TestErrorReadWhenAddrDoesNotMatch() {
-	skuReader, err := sku_reader.New("localhost:5000")
-	s.Require().NoError(err)
-	s.skuReader = skuReader
-	expectedMessage := "hello"
-
-	go func() {
-		message, err := s.skuReader.Read(s.deadline)
-		s.Require().Error(err)
-		s.Require().Equal(expectedMessage, message)
-	}()
-
-	_, err = net.Dial("tcp", addr)
-	s.Require().Error(err)
 }
