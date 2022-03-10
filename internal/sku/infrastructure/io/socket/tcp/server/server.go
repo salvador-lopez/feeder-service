@@ -50,6 +50,7 @@ func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time
 	report := Report{}
 	connectionSlots := NewConnectionSlotStatus(maxConnections)
 	var wg sync.WaitGroup
+	var mutex sync.Mutex
 	for liveCondition {
 		if connectionSlots.UseFreeSlot() {
 			wg.Add(1)
@@ -68,16 +69,22 @@ func (s *Server) Run(ctx context.Context, maxConnections int, deadline time.Time
 				err = s.createSkuCommandHandler.Handle(ctx, create_sku.Command{Sku: message})
 				if err != nil {
 					if errors.Is(err, domain.ErrSkuAlreadyExists) {
+						mutex.Lock()
+						defer mutex.Unlock()
 						report.DuplicatedSkus++
 						connectionSlots.FreesASlot()
 						wg.Done()
 						return
 					}
+					mutex.Lock()
+					defer mutex.Unlock()
 					report.InvalidSkus++
 					connectionSlots.FreesASlot()
 					wg.Done()
 					return
 				}
+				mutex.Lock()
+				defer mutex.Unlock()
 				report.CreatedSkus++
 				s.logger.Println(message)
 				connectionSlots.FreesASlot()

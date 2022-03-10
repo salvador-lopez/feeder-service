@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -70,6 +71,49 @@ func (s *UnitSuite) TestSkuReaderReadIsCalledFiveTimesAndCreatedSkusAreLoggedAnd
 	s.Require().Equal(0, report.InvalidSkus)
 	s.Require().Contains(s.loggerBuffer.String(), sku)
 	s.Require().Contains(s.loggerBuffer.String(), anotherSku)
+}
+
+func (s *UnitSuite) TestDuplicatedSkusCanBeUpdatedInAConcurrentWayWithNoRaceConditions() {
+	s.skuReaderMock.EXPECT().Read(s.deadline).Times(1).Return(sku, nil)
+	s.skuReaderMock.EXPECT().Read(s.deadline).Times(15000).Return(anotherSku, nil)
+	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return("terminate", nil)
+
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: sku}).Return(nil).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: anotherSku}).Return(nil).Times(1)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: anotherSku}).Return(domain.ErrSkuAlreadyExists).AnyTimes()
+
+	report := s.server.Run(s.ctx, 500, s.deadline)
+	s.Require().Equal(2, report.CreatedSkus)
+	s.Require().Equal(14999, report.DuplicatedSkus)
+	s.Require().Equal(0, report.InvalidSkus)
+}
+
+func (s *UnitSuite) TestCreatedSkusCanBeUpdatedInAConcurrentWayWithNoRaceConditions() {
+	for i := 0; i < 10000; i++ {
+		randomSku := "KASL-"+strconv.Itoa(i)
+		s.skuReaderMock.EXPECT().Read(s.deadline).Times(1).Return(randomSku, nil)
+		s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: randomSku}).Return(nil).Times(1)
+	}
+
+	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return("terminate", nil)
+
+	report := s.server.Run(s.ctx, 500, s.deadline)
+	s.Require().Equal(10000, report.CreatedSkus)
+	s.Require().Equal(0, report.DuplicatedSkus)
+	s.Require().Equal(0, report.InvalidSkus)
+}
+
+func (s *UnitSuite) TestInvalidSkusCanBeUpdatedInAConcurrentWayWithNoRaceConditions() {
+	invalidSku := "invalid-sku"
+	s.skuReaderMock.EXPECT().Read(s.deadline).Times(10000).Return(invalidSku, nil)
+	s.createSkuCommandHandlerMock.EXPECT().Handle(s.ctx, create_sku.Command{Sku: invalidSku}).Return(domain.ErrInvalidSku).Times(10000)
+
+	s.skuReaderMock.EXPECT().Read(s.deadline).AnyTimes().Return("terminate", nil)
+
+	report := s.server.Run(s.ctx, 500, s.deadline)
+	s.Require().Equal(0, report.CreatedSkus)
+	s.Require().Equal(0, report.DuplicatedSkus)
+	s.Require().Equal(10000, report.InvalidSkus)
 }
 
 func (s *UnitSuite) TestSkuReaderReadIsNotCalledWhenMaxConnectionsIsZeroAndEmptyReportIsReturned() {
